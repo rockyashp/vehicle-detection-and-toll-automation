@@ -31,64 +31,78 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── LAYOUT ── */
-main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px)}
+main{display:grid;grid-template-columns:1fr 380px 380px;gap:0;height:calc(100vh - 73px)}
 
-/* LEFT PANEL */
-.left-panel{padding:28px;overflow-y:auto;border-right:1px solid var(--border)}
+/* LEFT PANEL — Live Detection Feed */
+.left-panel{padding:20px;overflow-y:auto;border-right:1px solid var(--border);display:flex;flex-direction:column}
 .section-label{font-family:var(--mono);font-size:0.72rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
 
+/* Video feed container */
+.video-feed-wrapper{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--border);margin-bottom:20px;flex-shrink:0}
+.video-feed-wrapper.active{border-color:rgba(245,158,11,.5);box-shadow:0 0 30px rgba(245,158,11,.08),0 0 60px rgba(245,158,11,.04)}
+.video-feed-wrapper img{width:100%;display:block;min-height:300px;object-fit:contain;background:#000}
+
+/* HUD overlay elements */
+.feed-hud{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.feed-hud-top{position:absolute;top:12px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start}
+.feed-hud-badge{font-family:var(--mono);font-size:.7rem;padding:4px 10px;border-radius:4px;letter-spacing:1px;display:flex;align-items:center;gap:6px}
+.feed-live{background:rgba(239,68,68,.9);color:#fff}
+.feed-live .rec-dot{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1s infinite}
+.feed-loop{background:rgba(59,130,246,.85);color:#fff}
+.feed-idle{background:rgba(107,114,128,.7);color:#ddd}
+.feed-hud-time{font-family:var(--mono);font-size:.7rem;color:rgba(255,255,255,.6);padding:4px 10px;background:rgba(0,0,0,.5);border-radius:4px}
+.feed-hud-bottom{position:absolute;bottom:12px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:center}
+.feed-hud-stats{display:flex;gap:14px}
+.feed-hud-stat{font-family:var(--mono);font-size:.68rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:5px}
+.feed-hud-stat strong{color:var(--accent);font-size:.8rem}
+
+/* Corner brackets on video */
+.corner-bracket{position:absolute;width:20px;height:20px;border-color:var(--accent);opacity:.4}
+.corner-bracket.tl{top:6px;left:6px;border-top:2px solid;border-left:2px solid}
+.corner-bracket.tr{top:6px;right:6px;border-top:2px solid;border-right:2px solid}
+.corner-bracket.bl{bottom:6px;left:6px;border-bottom:2px solid;border-left:2px solid}
+.corner-bracket.br{bottom:6px;right:6px;border-bottom:2px solid;border-right:2px solid}
+
+/* Detection legend */
+.detection-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.76rem;color:var(--muted);font-weight:600;letter-spacing:1px}
+.legend-color{width:12px;height:3px;border-radius:2px}
+.legend-color.c-car{background:#3ba6fa}
+.legend-color.c-motorcycle{background:#f755a8}
+.legend-color.c-bus{background:#0b9ef5}
+.legend-color.c-truck{background:#ef4444}
+
+/* Toll rates */
+.toll-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toll-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;transition:.2s}
+.toll-card:hover{border-color:rgba(245,158,11,.3)}
+.toll-card .tc-icon{font-size:1.4rem}
+.toll-card .tc-name{font-weight:700;font-size:.9rem;letter-spacing:1px}
+.toll-card .tc-rate{font-family:var(--mono);color:var(--accent);font-size:.85rem}
+
+/* MIDDLE PANEL — Controls */
+.mid-panel{padding:20px;overflow-y:auto;border-right:1px solid var(--border)}
+
 /* Stats row */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
-.stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 14px;position:relative;overflow:hidden}
 .stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .stat-box.gold::before{background:var(--accent)}
 .stat-box.green::before{background:var(--green)}
 .stat-box.red::before{background:var(--accent2)}
-.stat-val{font-family:var(--mono);font-size:1.8rem;font-weight:400;line-height:1;margin-bottom:4px}
+.stat-val{font-family:var(--mono);font-size:1.5rem;font-weight:400;line-height:1;margin-bottom:4px}
 .stat-val.gold{color:var(--accent)}
 .stat-val.green{color:var(--green)}
 .stat-val.red{color:var(--accent2)}
-.stat-lbl{font-size:0.78rem;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-
-/* Upload zone */
-.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:12px;padding:36px 24px;text-align:center;cursor:pointer;transition:.3s;margin-bottom:20px;position:relative}
-.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(245,158,11,.04)}
-.upload-icon{font-size:2.4rem;margin-bottom:12px}
-.upload-zone h3{font-size:1.1rem;font-weight:700;letter-spacing:1px;margin-bottom:6px}
-.upload-zone p{color:var(--muted);font-size:0.85rem}
-.file-chosen{font-family:var(--mono);font-size:0.8rem;color:var(--accent);margin-top:10px;display:none}
-
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;background:var(--accent);color:#000;font-family:var(--font);font-weight:700;font-size:1rem;letter-spacing:2px;border:none;border-radius:8px;cursor:pointer;transition:.2s;margin-bottom:20px}
-.btn:hover{opacity:.88;transform:translateY(-1px)}
-.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
-
-/* Progress */
-#progress-box{display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
-.prog-head{display:flex;justify-content:space-between;margin-bottom:10px}
-.prog-label{font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px}
-.prog-pct{font-family:var(--mono);color:var(--accent)}
-.prog-track{height:6px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:8px}
-.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#f97316);border-radius:99px;transition:width .4s}
-.prog-sub{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
-
-/* RIGHT PANEL — Event Feed */
-.right-panel{background:var(--surface);overflow-y:auto;display:flex;flex-direction:column}
-.feed-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:10}
-.feed-title{font-size:1rem;font-weight:700;letter-spacing:2px}
-.feed-count{font-family:var(--mono);font-size:.78rem;background:rgba(245,158,11,.15);color:var(--accent);padding:3px 10px;border-radius:20px}
-#event-feed{flex:1;padding:12px}
-.empty-state{text-align:center;padding:60px 24px;color:var(--muted)}
-.empty-state .empty-icon{font-size:3rem;margin-bottom:12px}
-.empty-state p{font-size:.9rem;line-height:1.6}
+.stat-lbl{font-size:0.72rem;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
 
 /* Vehicle type breakdown */
-.type-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px}
-.type-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;transition:.3s}
+.type-breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.type-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center;position:relative;overflow:hidden;transition:.3s}
 .type-box.active{border-color:rgba(245,158,11,.4);box-shadow:0 0 20px rgba(245,158,11,.06)}
-.type-icon{font-size:1.6rem;margin-bottom:6px}
-.type-count{font-family:var(--mono);font-size:1.5rem;line-height:1;margin-bottom:4px;color:var(--text)}
-.type-name{font-size:.68rem;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.type-icon{font-size:1.4rem;margin-bottom:4px}
+.type-count{font-family:var(--mono);font-size:1.3rem;line-height:1;margin-bottom:3px;color:var(--text)}
+.type-name{font-size:.65rem;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
 .type-box::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;opacity:0;transition:.3s}
 .type-box.active::after{opacity:1}
 .type-box.t-car::after{background:#3b82f6}
@@ -96,33 +110,74 @@ main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px
 .type-box.t-bus::after{background:#f59e0b}
 .type-box.t-truck::after{background:#ef4444}
 
+/* Upload zone */
+.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:.3s;margin-bottom:16px;position:relative}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(245,158,11,.04)}
+.upload-icon{font-size:2rem;margin-bottom:8px}
+.upload-zone h3{font-size:1rem;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.upload-zone p{color:var(--muted);font-size:0.8rem}
+.file-chosen{font-family:var(--mono);font-size:0.78rem;color:var(--accent);margin-top:8px;display:none}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;background:var(--accent);color:#000;font-family:var(--font);font-weight:700;font-size:.95rem;letter-spacing:2px;border:none;border-radius:8px;cursor:pointer;transition:.2s;margin-bottom:16px}
+.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+.btn-stop{background:transparent;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--font);font-weight:700;font-size:.82rem;letter-spacing:2px;padding:10px;border-radius:8px;cursor:pointer;width:100%;margin-bottom:16px;transition:.2s;display:none}
+.btn-stop:hover{background:rgba(239,68,68,.1)}
+
+/* Progress */
+#progress-box{display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.prog-head{display:flex;justify-content:space-between;margin-bottom:8px}
+.prog-label{font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:8px}
+.prog-pct{font-family:var(--mono);color:var(--accent)}
+.prog-track{height:5px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#f97316);border-radius:99px;transition:width .4s}
+.prog-sub{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+
+/* RIGHT PANEL — Event Feed */
+.right-panel{background:var(--surface);overflow-y:auto;display:flex;flex-direction:column}
+.feed-header{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:10}
+.feed-title{font-size:.95rem;font-weight:700;letter-spacing:2px}
+.feed-count{font-family:var(--mono);font-size:.75rem;background:rgba(245,158,11,.15);color:var(--accent);padding:3px 10px;border-radius:20px}
+#event-feed{flex:1;padding:10px}
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-state .empty-icon{font-size:2.6rem;margin-bottom:10px}
+.empty-state p{font-size:.85rem;line-height:1.6}
+
 /* Event card */
-.event-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;animation:slideIn .3s ease;border-left:3px solid transparent}
+.event-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;animation:slideIn .3s ease;border-left:3px solid transparent}
 .event-card.success{border-left-color:var(--green)}
 .event-card.insufficient{border-left-color:var(--accent2)}
 .event-card.unregistered{border-left-color:var(--muted)}
 @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
-.ev-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.ev-plate{font-family:var(--mono);font-size:1rem;font-weight:400;background:rgba(255,255,255,.06);padding:3px 10px;border-radius:4px;letter-spacing:2px}
-.ev-badge{font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+.ev-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.ev-plate{font-family:var(--mono);font-size:.9rem;font-weight:400;background:rgba(255,255,255,.06);padding:3px 8px;border-radius:4px;letter-spacing:2px}
+.ev-badge{font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
 .badge-success{background:rgba(16,185,129,.15);color:var(--green)}
 .badge-insufficient{background:rgba(239,68,68,.15);color:var(--accent2)}
 .badge-unregistered{background:rgba(107,114,128,.15);color:var(--muted)}
-.ev-type-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.ev-type-tag{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;padding:4px 12px;border-radius:6px;letter-spacing:1px;text-transform:uppercase}
+.ev-type-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ev-type-tag{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:6px;letter-spacing:1px;text-transform:uppercase}
 .ev-type-tag.t-car{background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.25)}
 .ev-type-tag.t-motorcycle{background:rgba(168,85,247,.12);color:#c084fc;border:1px solid rgba(168,85,247,.25)}
 .ev-type-tag.t-bus{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
 .ev-type-tag.t-truck{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25)}
-.ev-owner{font-size:.85rem;font-weight:600;margin-bottom:6px;color:var(--text)}
-.ev-details{display:flex;gap:16px;font-size:.78rem;color:var(--muted)}
+.ev-owner{font-size:.82rem;font-weight:600;margin-bottom:5px;color:var(--text)}
+.ev-details{display:flex;gap:14px;font-size:.75rem;color:var(--muted)}
 .ev-detail strong{color:var(--text)}
-.ev-time{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-top:6px}
+.ev-time{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:5px}
 
 /* scrollbar */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+/* Responsive fallback */
+@media (max-width: 1200px) {
+  main{grid-template-columns:1fr 340px}
+  .right-panel{display:none}
+}
 </style>
 </head>
 <body>
@@ -139,17 +194,53 @@ main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px
 </header>
 
 <main>
-  <!-- LEFT -->
+  <!-- LEFT — Live Video Feed -->
   <div class="left-panel">
+    <div class="section-label">Live Detection Feed</div>
+    <div class="video-feed-wrapper" id="feedWrapper">
+      <img id="videoFeed" src="/video_feed" alt="Live Detection Feed"/>
+      <div class="corner-bracket tl"></div>
+      <div class="corner-bracket tr"></div>
+      <div class="corner-bracket bl"></div>
+      <div class="corner-bracket br"></div>
+      <div class="feed-hud">
+        <div class="feed-hud-top">
+          <div class="feed-hud-badge feed-idle" id="feedBadge">
+            <span>STANDBY</span>
+          </div>
+          <div class="feed-hud-time" id="feedTime"></div>
+        </div>
+        <div class="feed-hud-bottom">
+          <div class="feed-hud-stats">
+            <div class="feed-hud-stat">DETECTED: <strong id="feedDetected">0</strong></div>
+            <div class="feed-hud-stat">FRAME: <strong id="feedFrame">0</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detection-legend">
+      <div class="legend-item"><span class="legend-color c-car"></span> CAR</div>
+      <div class="legend-item"><span class="legend-color c-motorcycle"></span> MOTORCYCLE</div>
+      <div class="legend-item"><span class="legend-color c-bus"></span> BUS</div>
+      <div class="legend-item"><span class="legend-color c-truck"></span> TRUCK</div>
+    </div>
+
+    <div class="section-label">Toll Rates</div>
+    <div class="toll-grid" id="tollGrid"></div>
+  </div>
+
+  <!-- MIDDLE — Controls & Stats -->
+  <div class="mid-panel">
     <div class="section-label">Live Stats</div>
     <div class="stats-row">
       <div class="stat-box gold">
         <div class="stat-val gold" id="s-collected">₹0</div>
-        <div class="stat-lbl">Collected Today</div>
+        <div class="stat-lbl">Collected</div>
       </div>
       <div class="stat-box green">
         <div class="stat-val green" id="s-vehicles">0</div>
-        <div class="stat-lbl">Vehicles Passed</div>
+        <div class="stat-lbl">Vehicles</div>
       </div>
       <div class="stat-box red">
         <div class="stat-val red" id="s-failed">0</div>
@@ -186,12 +277,15 @@ main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px
       <input type="file" id="videoInput" accept="video/*"/>
       <div class="upload-icon">📹</div>
       <h3>DROP VIDEO HERE</h3>
-      <p>System will detect plates & deduct toll automatically</p>
+      <p>AI detects vehicles & deducts toll automatically</p>
       <div class="file-chosen" id="fileChosen"></div>
     </div>
 
     <button class="btn" id="startBtn" disabled onclick="startProcessing()">
-      ⚡ &nbsp;START TOLL COLLECTION
+      ⚡ &nbsp;START DETECTION
+    </button>
+    <button class="btn-stop" id="stopBtn" onclick="stopFeed()">
+      ■ &nbsp;STOP LOOP PLAYBACK
     </button>
 
     <div id="progress-box">
@@ -201,16 +295,6 @@ main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px
       </div>
       <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
       <div class="prog-sub" id="progSub">Initializing AI model...</div>
-    </div>
-
-    <!-- Toll rates reference -->
-    <div class="section-label" style="margin-top:8px">Toll Rates</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${[['🚗','Car','₹30'],['🏍️','Motorcycle','₹15'],['🚌','Bus','₹80'],['🚚','Truck','₹100']].map(([e,n,r])=>`
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:1.4rem">${e}</span>
-        <div><div style="font-weight:700;font-size:.9rem">${n}</div><div style="font-family:var(--mono);color:var(--accent);font-size:.85rem">${r}</div></div>
-      </div>`).join('')}
     </div>
   </div>
 
@@ -232,14 +316,25 @@ main{display:grid;grid-template-columns:1fr 380px;gap:0;height:calc(100vh - 73px
 <script>
 const videoInput = document.getElementById('videoInput');
 const startBtn   = document.getElementById('startBtn');
+const stopBtn    = document.getElementById('stopBtn');
 const uploadZone = document.getElementById('uploadZone');
 const fileChosen = document.getElementById('fileChosen');
 const feed       = document.getElementById('event-feed');
+const feedWrapper = document.getElementById('feedWrapper');
+const feedBadge  = document.getElementById('feedBadge');
 
 let eventCount = 0;
 let seenIds = new Set();
+let isProcessing = false;
 
 const EMOJI = {car:'🚗',motorcycle:'🏍️',bus:'🚌',truck:'🚚'};
+
+// Update HUD time
+setInterval(() => {
+  const now = new Date();
+  document.getElementById('feedTime').textContent =
+    now.toLocaleTimeString('en-US', {hour12:false});
+}, 1000);
 
 videoInput.addEventListener('change', () => {
   if (videoInput.files[0]) {
@@ -260,14 +355,37 @@ uploadZone.addEventListener('drop', e=>{
   }
 });
 
+function setFeedState(state) {
+  feedBadge.className = 'feed-hud-badge';
+  if (state === 'live') {
+    feedBadge.className += ' feed-live';
+    feedBadge.innerHTML = '<span class="rec-dot"></span> LIVE';
+    feedWrapper.classList.add('active');
+  } else if (state === 'loop') {
+    feedBadge.className += ' feed-loop';
+    feedBadge.innerHTML = '↻ LOOPING';
+    feedWrapper.classList.add('active');
+  } else {
+    feedBadge.className += ' feed-idle';
+    feedBadge.innerHTML = 'STANDBY';
+    feedWrapper.classList.remove('active');
+  }
+}
+
 function startProcessing() {
   const file = videoInput.files[0];
   if (!file) return;
   startBtn.disabled = true;
+  isProcessing = true;
   document.getElementById('progress-box').style.display = 'block';
   feed.innerHTML = '';
   eventCount = 0; seenIds = new Set();
   updateFeedCount();
+  setFeedState('live');
+
+  // Refresh the MJPEG feed (force reconnect)
+  const feedImg = document.getElementById('videoFeed');
+  feedImg.src = '/video_feed?' + Date.now();
 
   const fd = new FormData();
   fd.append('video', file);
@@ -301,15 +419,28 @@ function startProcessing() {
     })
     .catch(err => {
       startBtn.disabled = false;
+      isProcessing = false;
+      setFeedState('idle');
       alert('Could not reach Flask backend.\nRun: python app.py');
     });
+}
+
+function stopFeed() {
+  fetch('/stop_feed', {method:'POST'}).then(() => {
+    setFeedState('idle');
+    stopBtn.style.display = 'none';
+    // Reload feed img to show blank
+    document.getElementById('videoFeed').src = '/video_feed?' + Date.now();
+  });
 }
 
 function updateProgress(d) {
   document.getElementById('progFill').style.width = d.progress + '%';
   document.getElementById('progPct').textContent = d.progress + '%';
   document.getElementById('progSub').textContent =
-    `Frame ${d.frame||0} / ${d.total_frames||0}  ·  ${d.vehicles_processed||0} unique vehicles detected`;
+    `Frame ${d.frame||0} / ${d.total_frames||0}  ·  ${d.vehicles_processed||0} unique vehicles`;
+  document.getElementById('feedDetected').textContent = d.vehicles_processed || 0;
+  document.getElementById('feedFrame').textContent = (d.frame||0) + '/' + (d.total_frames||0);
 }
 
 function renderEvents(events) {
@@ -326,14 +457,14 @@ function renderEvents(events) {
                      : ev.status === 'insufficient' ? 'badge-insufficient'
                      : 'badge-unregistered';
     const badgeText  = ev.status === 'success' ? '✓ PAID'
-                     : ev.status === 'insufficient' ? '✗ LOW BALANCE'
+                     : ev.status === 'insufficient' ? '✗ LOW BAL'
                      : '? UNKNOWN';
 
     const emoji = EMOJI[ev.vehicle_type] || '🚗';
     const tollLine = ev.status === 'success'
-      ? `<span><strong>₹${ev.toll}</strong> deducted</span><span>Balance: <strong>₹${(ev.balance_after||0).toFixed(0)}</strong></span>`
+      ? `<span><strong>₹${ev.toll}</strong> deducted</span><span>Bal: <strong>₹${(ev.balance_after||0).toFixed(0)}</strong></span>`
       : ev.status === 'insufficient'
-      ? `<span>Required <strong>₹${ev.toll}</strong></span><span>Balance: <strong>₹${(ev.balance_before||0).toFixed(0)}</strong></span>`
+      ? `<span>Need <strong>₹${ev.toll}</strong></span><span>Bal: <strong>₹${(ev.balance_before||0).toFixed(0)}</strong></span>`
       : `<span>Toll: <strong>₹${ev.toll}</strong></span><span>Not registered</span>`;
 
     const typeClass = 't-' + (ev.vehicle_type || 'car');
@@ -377,7 +508,6 @@ function updateLiveStats(ev) {
     if (countEl) countEl.textContent = typeCounts[vt];
     if (boxEl) {
       boxEl.classList.add('active');
-      // brief highlight animation
       boxEl.style.transform = 'scale(1.04)';
       setTimeout(() => { boxEl.style.transform = ''; }, 300);
     }
@@ -389,8 +519,11 @@ function updateFeedCount() {
 }
 
 function onDone() {
-  document.getElementById('progSub').textContent = '✅ Processing complete!';
+  document.getElementById('progSub').textContent = '✅ Processing complete — looping playback';
   startBtn.disabled = false;
+  isProcessing = false;
+  setFeedState('loop');
+  stopBtn.style.display = 'block';
 }
 
 function loadStats() {
@@ -404,27 +537,21 @@ function loadStats() {
 // load stats on page load
 loadStats();
 
-// Render toll rates inline (template literal used server-side alternative)
-document.querySelectorAll('.toll-rate-item').forEach(()=>{});
-</script>
-
-<!-- Inline toll rates (replacing template literal) -->
-<script>
+// Render toll rates
 (function(){
-  const ratesEl = document.querySelector('.left-panel > div:last-child');
-  if (!ratesEl) return;
+  const grid = document.getElementById('tollGrid');
   const rates = [
-    {e:'🚗', n:'Car',        r:'₹30'},
+    {e:'🚗', n:'Car', r:'₹30'},
     {e:'🏍️', n:'Motorcycle', r:'₹15'},
-    {e:'🚌', n:'Bus',        r:'₹80'},
-    {e:'🚚', n:'Truck',      r:'₹100'},
+    {e:'🚌', n:'Bus', r:'₹80'},
+    {e:'🚚', n:'Truck', r:'₹100'},
   ];
-  ratesEl.innerHTML = rates.map(({e,n,r})=>`
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:1.4rem">${e}</span>
+  grid.innerHTML = rates.map(({e,n,r})=>`
+    <div class="toll-card">
+      <span class="tc-icon">${e}</span>
       <div>
-        <div style="font-weight:700;font-size:.9rem;letter-spacing:1px">${n}</div>
-        <div style="font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:.85rem">${r}</div>
+        <div class="tc-name">${n}</div>
+        <div class="tc-rate">${r}</div>
       </div>
     </div>`).join('');
 })();

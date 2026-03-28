@@ -2,11 +2,14 @@ from flask import Flask, request, jsonify, render_template, Response, session, r
 from flask_cors import CORS
 from functools import wraps
 import cv2
+import numpy as np
 import os
 import json
 import sqlite3
 import re
 import datetime
+import threading
+import time
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -40,6 +43,63 @@ TOLL_RATES = {
 
 # COCO class IDs for vehicles
 VEHICLE_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
+
+# ── LIVE VIDEO FEED STATE ────────────────────────────────────────────────────
+latest_frame = None          # stores the latest annotated JPEG bytes
+feed_active = False          # whether a video is being processed
+feed_lock = threading.Lock()
+
+BOX_COLORS = {
+    "car":        (250, 166, 59),   # blue-ish (BGR)
+    "motorcycle": (247, 85, 168),   # purple
+    "bus":        (11, 158, 245),   # amber
+    "truck":      (68, 68, 239),    # red
+}
+
+def draw_detections(frame, results):
+    """Draw bounding boxes and labels on frame for all detected vehicles."""
+    annotated = frame.copy()
+    if results[0].boxes is not None and results[0].boxes.cls is not None:
+        boxes = results[0].boxes.xyxy.cpu().numpy() if hasattr(results[0].boxes.xyxy, 'cpu') else results[0].boxes.xyxy
+        classes = results[0].boxes.cls.cpu().numpy() if hasattr(results[0].boxes.cls, 'cpu') else results[0].boxes.cls
+        ids = None
+        if results[0].boxes.id is not None:
+            ids = results[0].boxes.id.cpu().numpy() if hasattr(results[0].boxes.id, 'cpu') else results[0].boxes.id
+        confs = results[0].boxes.conf.cpu().numpy() if hasattr(results[0].boxes.conf, 'cpu') else results[0].boxes.conf
+
+        for i, (box, cls) in enumerate(zip(boxes, classes)):
+            x1, y1, x2, y2 = map(int, box)
+            vtype = VEHICLE_CLASSES.get(int(cls), "car")
+            color = BOX_COLORS.get(vtype, (255, 255, 255))
+            
+            # Draw filled rectangle behind text
+            label = vtype.upper()
+            if ids is not None:
+                label += f" #{int(ids[i])}"
+            if i < len(confs):
+                label += f" {confs[i]:.0%}"
+
+            # Bounding box with thickness
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+            
+            # Label background
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(annotated, (x1, y1 - th - 10), (x1 + tw + 8, y1), color, -1)
+            cv2.putText(annotated, label, (x1 + 4, y1 - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+            
+            # Corner accents
+            corner_len = min(20, (x2-x1)//4, (y2-y1)//4)
+            cv2.line(annotated, (x1, y1), (x1+corner_len, y1), color, 3)
+            cv2.line(annotated, (x1, y1), (x1, y1+corner_len), color, 3)
+            cv2.line(annotated, (x2, y1), (x2-corner_len, y1), color, 3)
+            cv2.line(annotated, (x2, y1), (x2, y1+corner_len), color, 3)
+            cv2.line(annotated, (x1, y2), (x1+corner_len, y2), color, 3)
+            cv2.line(annotated, (x1, y2), (x1, y2-corner_len), color, 3)
+            cv2.line(annotated, (x2, y2), (x2-corner_len, y2), color, 3)
+            cv2.line(annotated, (x2, y2), (x2, y2-corner_len), color, 3)
+
+    return annotated
 
 # ── DATABASE ─────────────────────────────────────────────────────────────────
 def get_db():
@@ -258,6 +318,13 @@ def get_stats():
 
 @app.route("/process_video", methods=["POST"])
 def process_video():
+    global latest_frame, feed_active
+    # Stop any existing loop playback before starting a new video
+    feed_active = False
+    time.sleep(0.15)  # give the old loop thread time to exit
+    with feed_lock:
+        latest_frame = None
+
     if "video" not in request.files:
         return jsonify({"error": "No video"}), 400
 
@@ -266,6 +333,7 @@ def process_video():
     video_file.save(path)
 
     def generate():
+        global latest_frame, feed_active
         try:
             from ultralytics import YOLO
             model = YOLO("yolov8n.pt")
@@ -275,9 +343,14 @@ def process_video():
 
         cap = cv2.VideoCapture(path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30
         frame_count = 0
         processed_ids = set()   # track IDs already tolled
         events = []
+        feed_active = True
+
+        # Store all annotated frames for looping playback
+        annotated_frames = []
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -289,6 +362,21 @@ def process_video():
 
             results = model.track(frame, persist=True,
                                   classes=list(VEHICLE_CLASSES.keys()), verbose=False)
+
+            # Draw bounding boxes on frame and update the live feed
+            annotated = draw_detections(frame, results)
+            # Resize for streaming efficiency
+            h, w = annotated.shape[:2]
+            max_w = 720
+            if w > max_w:
+                scale = max_w / w
+                annotated = cv2.resize(annotated, (max_w, int(h * scale)))
+
+            _, jpeg = cv2.imencode('.jpg', annotated, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            jpeg_bytes = jpeg.tobytes()
+            with feed_lock:
+                latest_frame = jpeg_bytes
+            annotated_frames.append(jpeg_bytes)
 
             if results[0].boxes is not None and results[0].boxes.id is not None:
                 for box, tid, cls in zip(results[0].boxes.xyxy,
@@ -338,6 +426,25 @@ def process_video():
             yield f"data: {json.dumps(payload)}\n\n"
 
         cap.release()
+
+        # Start looping playback in background thread
+        def loop_playback():
+            global latest_frame, feed_active
+            if not annotated_frames:
+                feed_active = False
+                return
+            frame_delay = (5 / fps) if fps > 0 else 0.15  # match the 1-in-5 frame skip
+            while feed_active:
+                for f in annotated_frames:
+                    if not feed_active:
+                        return
+                    with feed_lock:
+                        latest_frame = f
+                    time.sleep(frame_delay)
+
+        playback_thread = threading.Thread(target=loop_playback, daemon=True)
+        playback_thread.start()
+
         try:
             os.remove(path)
         except:
@@ -346,6 +453,36 @@ def process_video():
         yield f"data: {json.dumps({**payload, 'done': True, 'progress': 100})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
+
+
+@app.route("/video_feed")
+def video_feed():
+    """MJPEG stream of annotated detection frames."""
+    def gen():
+        while True:
+            with feed_lock:
+                frame = latest_frame
+            if frame is not None:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            else:
+                # Send a blank dark frame as placeholder
+                blank = np.zeros((405, 720, 3), dtype=np.uint8)
+                cv2.putText(blank, "Waiting for video...", (180, 210),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (80, 80, 80), 2)
+                _, jpeg = cv2.imencode('.jpg', blank)
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+            time.sleep(0.04)  # ~25fps
+    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route("/stop_feed", methods=["POST"])
+def stop_feed():
+    global feed_active, latest_frame
+    feed_active = False
+    latest_frame = None
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":
