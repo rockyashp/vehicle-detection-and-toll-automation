@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, Response, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, Response, session, redirect, url_for, make_response
 from flask_cors import CORS
 from functools import wraps
 import cv2
@@ -11,6 +11,8 @@ import datetime
 import threading
 import time
 from collections import defaultdict
+import csv
+import io
 
 app = Flask(__name__)
 app.secret_key = "ec1ec19e2a66ee6873a56064de01b1d421da661ed9f8bc97"
@@ -319,6 +321,51 @@ def get_transactions():
     rows = conn.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 100").fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+@app.route("/api/reset", methods=["POST"])
+@admin_required
+def reset_all():
+    """Clear all transactions and reset vehicle balances to defaults."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM transactions")
+    # Reset all vehicle balances to 500 (default)
+    c.execute("UPDATE vehicles SET balance = 500.0")
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/export/vehicles/csv")
+@admin_required
+def export_vehicles_csv():
+    conn = get_db()
+    rows = conn.execute("SELECT plate, owner, vehicle_type, balance, registered_at FROM vehicles ORDER BY plate").fetchall()
+    conn.close()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Plate", "Owner", "Vehicle Type", "Balance (₹)", "Registered At"])
+    for r in rows:
+        writer.writerow([r["plate"], r["owner"], r["vehicle_type"], f"{r['balance']:.2f}", r["registered_at"]])
+    resp = make_response(output.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=vehicles_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return resp
+
+@app.route("/api/export/transactions/csv")
+@admin_required
+def export_transactions_csv():
+    conn = get_db()
+    rows = conn.execute("SELECT timestamp, plate, vehicle_type, toll_amount, balance_before, balance_after, status FROM transactions ORDER BY id DESC").fetchall()
+    conn.close()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Timestamp", "Plate", "Vehicle Type", "Toll Amount (₹)", "Balance Before (₹)", "Balance After (₹)", "Status"])
+    for r in rows:
+        writer.writerow([r["timestamp"], r["plate"], r["vehicle_type"], f"{r['toll_amount']:.2f}", f"{r['balance_before']:.2f}", f"{r['balance_after']:.2f}", r["status"]])
+    resp = make_response(output.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=transactions_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return resp
 
 @app.route('/api/stats')
 def get_stats():

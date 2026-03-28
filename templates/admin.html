@@ -6,6 +6,8 @@
 <title>TollAI — Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -76,6 +78,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .btn-topup:hover{background:var(--green);color:#000}
 .btn-del{border-color:var(--red);color:var(--red);background:transparent;margin-left:6px}
 .btn-del:hover{background:var(--red);color:#fff}
+.btn-export{border-color:var(--blue);color:var(--blue);background:transparent;margin-left:6px}
+.btn-export:hover{background:var(--blue);color:#fff}
+.export-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.export-row .section-label{margin-bottom:0;flex:1}
 
 /* add vehicle form */
 .add-form{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
@@ -139,7 +145,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .legend-item{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:600;color:var(--muted)}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .dash-total-banner{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04));border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
-.dtb-left{}
 .dtb-label{font-size:.72rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .dtb-amount{font-family:var(--mono);font-size:2.8rem;color:var(--accent);line-height:1}
 .dtb-sub{font-size:.78rem;color:var(--muted);margin-top:6px}
@@ -213,11 +218,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="stat-box blue"><div class="stat-val blue" id="a-registered">—</div><div class="stat-lbl">Registered Vehicles</div></div>
   </div>
 
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab" onclick="showTab('dashboard',this)">DASHBOARD</button>
     <button class="tab active" onclick="showTab('vehicles',this)">VEHICLES</button>
     <button class="tab" onclick="showTab('transactions',this)">TRANSACTIONS</button>
+  </div>
+  <button class="act-btn btn-del" style="padding:8px 20px;font-size:.82rem;letter-spacing:1px" onclick="resetAll()">⟳ RESET ALL</button>
   </div>
 
   <!-- DASHBOARD TAB -->
@@ -374,8 +382,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <button class="submit-btn" onclick="addVehicle()">+ ADD VEHICLE</button>
     </div>
-
-    <div class="section-label">Registered Vehicles</div>
+    <div class="export-row">
+      <div class="section-label">Registered Vehicles</div>
+      <button class="act-btn btn-export" onclick="window.location.href='/api/export/vehicles/csv'">⬇ CSV</button>
+      <button class="act-btn btn-export" onclick="exportVehiclesPDF()">⬇ PDF</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
@@ -388,7 +399,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
   <!-- TRANSACTIONS TAB -->
   <div id="tab-transactions" style="display:none">
-    <div class="section-label">Transaction History</div>
+    <div class="export-row">
+      <div class="section-label">Transaction History</div>
+      <button class="act-btn btn-export" onclick="window.location.href='/api/export/transactions/csv'">⬇ CSV</button>
+      <button class="act-btn btn-export" onclick="exportTransactionsPDF()">⬇ PDF</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
@@ -856,6 +871,110 @@ function loadTransactions() {
         <td><span class="status-badge ${stClass}">${stLabel}</span></td>
       </tr>`;
     }).join('');
+  });
+}
+
+// ── RESET ALL ──────────────────────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('Reset ALL data? This will clear all transactions and reset every vehicle balance to ₹500.')) return;
+  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  fetch('/api/reset', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('All data has been reset ✓');
+        loadStats();
+        loadVehicles();
+        loadTransactions();
+        if (document.getElementById('tab-dashboard').style.display !== 'none') refreshDashboard();
+      } else {
+        toast('Reset failed', true);
+      }
+    })
+    .catch(() => toast('Could not reach server', true));
+}
+
+// ── PDF EXPORT ──────────────────────────────────────────────────────────────────
+function exportVehiclesPDF() {
+  if (!allVehicles.length) { toast('No vehicles to export', true); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFontSize(18);
+  doc.setTextColor(245, 158, 11);
+  doc.text('TollAI — Registered Vehicles', 14, 20);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text('Generated: ' + new Date().toLocaleString(), 14, 27);
+  doc.text('Total vehicles: ' + allVehicles.length, 14, 32);
+
+  doc.autoTable({
+    startY: 38,
+    head: [['Plate', 'Owner', 'Type', 'Balance (₹)', 'Registered']],
+    body: allVehicles.map(v => [
+      v.plate,
+      v.owner,
+      v.vehicle_type.charAt(0).toUpperCase() + v.vehicle_type.slice(1),
+      '₹' + v.balance.toFixed(2),
+      v.registered_at ? v.registered_at.split('T')[0] : '—'
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [245, 158, 11], textColor: 0, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  doc.save('vehicles_' + new Date().toISOString().slice(0,10) + '.pdf');
+  toast('PDF downloaded ✓');
+}
+
+function exportTransactionsPDF() {
+  fetch('/api/transactions').then(r => r.json()).then(data => {
+    if (!data.length) { toast('No transactions to export', true); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape');
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(245, 158, 11);
+    doc.text('TollAI — Transaction History', 14, 20);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text('Generated: ' + new Date().toLocaleString(), 14, 27);
+    doc.text('Total transactions: ' + data.length, 14, 32);
+
+    const totalCollected = data.filter(t => t.status === 'success').reduce((s, t) => s + t.toll_amount, 0);
+    doc.text('Total collected: ₹' + totalCollected.toFixed(2), 14, 37);
+
+    doc.autoTable({
+      startY: 43,
+      head: [['Timestamp', 'Plate', 'Type', 'Toll (₹)', 'Before (₹)', 'After (₹)', 'Status']],
+      body: data.map(t => [
+        t.timestamp,
+        t.plate,
+        t.vehicle_type.charAt(0).toUpperCase() + t.vehicle_type.slice(1),
+        '₹' + t.toll_amount.toFixed(0),
+        '₹' + t.balance_before.toFixed(0),
+        t.status === 'success' ? '₹' + t.balance_after.toFixed(0) : '—',
+        t.status === 'success' ? 'Paid' : t.status === 'insufficient' ? 'Low Balance' : 'Unregistered'
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [245, 158, 11], textColor: 0, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: { 6: { fontStyle: 'bold' } },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 6) {
+          if (data.cell.raw === 'Paid') data.cell.styles.textColor = [22, 163, 74];
+          else if (data.cell.raw === 'Low Balance') data.cell.styles.textColor = [220, 38, 38];
+          else data.cell.styles.textColor = [120, 120, 120];
+        }
+      }
+    });
+
+    doc.save('transactions_' + new Date().toISOString().slice(0,10) + '.pdf');
+    toast('PDF downloaded ✓');
   });
 }
 
