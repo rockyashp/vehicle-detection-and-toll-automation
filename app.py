@@ -146,6 +146,29 @@ def init_db():
     conn.commit()
     conn.close()
 
+def log_unregistered(vehicle_type, plate):
+    conn = get_db()
+    c = conn.cursor()
+
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    c.execute('''
+        INSERT INTO transactions 
+        (plate, vehicle_type, toll_amount, balance_before, balance_after, status, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        plate,
+        vehicle_type,
+        TOLL_RATES.get(vehicle_type, 30),
+        0,
+        0,
+        "unregistered",
+        ts
+    ))
+
+    conn.commit()
+    conn.close()
+    
 # ── PLATE OCR ─────────────────────────────────────────────────────────────────
 def extract_plate_text(frame):
     """Try EasyOCR, fall back to basic contour-based detection."""
@@ -297,23 +320,68 @@ def get_transactions():
     conn.close()
     return jsonify([dict(r) for r in rows])
 
-@app.route("/api/stats", methods=["GET"])
+@app.route('/api/stats')
 def get_stats():
     conn = get_db()
-    total_collected = conn.execute(
-        "SELECT COALESCE(SUM(toll_amount),0) FROM transactions WHERE status='success'").fetchone()[0]
-    total_vehicles  = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-    insufficient    = conn.execute(
-        "SELECT COUNT(*) FROM transactions WHERE status='insufficient'").fetchone()[0]
-    by_type = conn.execute(
-        "SELECT vehicle_type, COUNT(*) as cnt, SUM(CASE WHEN status='success' THEN toll_amount ELSE 0 END) as rev "
-        "FROM transactions GROUP BY vehicle_type").fetchall()
+    c = conn.cursor()
+
+    # ── GLOBAL STATS ──
+    total_collected = c.execute(
+        "SELECT COALESCE(SUM(toll_amount),0) FROM transactions"
+    ).fetchone()[0]
+
+    total_vehicles = c.execute(
+        "SELECT COUNT(*) FROM transactions"
+    ).fetchone()[0]
+
+    success_count = c.execute(
+        "SELECT COUNT(*) FROM transactions WHERE status='success'"
+    ).fetchone()[0]
+
+    insufficient = c.execute(
+        "SELECT COUNT(*) FROM transactions WHERE status='insufficient'"
+    ).fetchone()[0]
+
+    unregistered = c.execute(
+        "SELECT COUNT(*) FROM transactions WHERE status='unregistered'"
+    ).fetchone()[0]
+
+    # ── PER VEHICLE TYPE (ALL STATUSES) ──
+    by_type = c.execute("""
+        SELECT 
+            vehicle_type,
+            COUNT(*) as total_count,
+            SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success_count,
+            SUM(CASE WHEN status='insufficient' THEN 1 ELSE 0 END) as insufficient_count,
+            SUM(CASE WHEN status='unregistered' THEN 1 ELSE 0 END) as unregistered_count,
+            SUM(toll_amount) as revenue
+        FROM transactions
+        GROUP BY vehicle_type
+    """).fetchall()
+
+    # ── HOURLY FLOW ──
+    hourly = c.execute("""
+        SELECT 
+            strftime('%H:00', timestamp) as hour,
+            COUNT(*) as total_count,
+            SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success_count,
+            SUM(CASE WHEN status='insufficient' THEN 1 ELSE 0 END) as insufficient_count,
+            SUM(CASE WHEN status='unregistered' THEN 1 ELSE 0 END) as unregistered_count
+        FROM transactions
+        GROUP BY hour
+        ORDER BY hour
+    """).fetchall()
+
     conn.close()
+
     return jsonify({
         "total_collected": total_collected,
         "total_vehicles": total_vehicles,
+        "success_count": success_count,
         "insufficient": insufficient,
-        "by_type": [dict(r) for r in by_type]
+        "unregistered": unregistered,
+        "by_type": [dict(r) for r in by_type],
+        "hourly": [dict(r) for r in hourly]
     })
 
 @app.route("/process_video", methods=["POST"])
@@ -405,8 +473,11 @@ def process_video():
                             events.append(txn)
                         else:
                             # Unknown plate — log as unregistered
+                            plate_val = plate_text or f"UNKNOWN-{tid}"
+                            log_unregistered(vtype, plate_val)
+
                             events.append({
-                                "plate": plate_text or f"UNKNOWN-{tid}",
+                                "plate": plate_val,
                                 "owner": "Unregistered",
                                 "vehicle_type": vtype,
                                 "toll": TOLL_RATES.get(vtype, 30),
