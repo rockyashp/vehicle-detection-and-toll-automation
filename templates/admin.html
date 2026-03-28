@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>TollAI — Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -100,8 +101,92 @@ tr:hover td{background:rgba(255,255,255,.02)}
 #toast.show{transform:none;opacity:1}
 #toast.error{background:var(--red);color:#fff}
 
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+/* ── DASHBOARD ── */
+.dash-revenue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.rev-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 18px;position:relative;overflow:hidden;transition:.3s}
+.rev-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.rev-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
+.rev-card.rc-car::before{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.rev-card.rc-motorcycle::before{background:linear-gradient(90deg,#a855f7,#c084fc)}
+.rev-card.rc-bus::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.rev-card.rc-truck::before{background:linear-gradient(90deg,#ef4444,#f87171)}
+.rev-icon{font-size:1.8rem;margin-bottom:10px}
+.rev-amount{font-family:var(--mono);font-size:1.6rem;line-height:1;margin-bottom:4px}
+.rev-card.rc-car .rev-amount{color:#60a5fa}
+.rev-card.rc-motorcycle .rev-amount{color:#c084fc}
+.rev-card.rc-bus .rev-amount{color:#fbbf24}
+.rev-card.rc-truck .rev-amount{color:#f87171}
+.rev-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
+.rev-meta{display:flex;gap:12px;font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.rev-meta span strong{color:var(--text)}
+.rev-bar-bg{height:3px;background:var(--border);border-radius:99px;margin-top:12px;overflow:hidden}
+.rev-bar-fill{height:100%;border-radius:99px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.rc-car .rev-bar-fill{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.rc-motorcycle .rev-bar-fill{background:linear-gradient(90deg,#a855f7,#c084fc)}
+.rc-bus .rev-bar-fill{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.rc-truck .rev-bar-fill{background:linear-gradient(90deg,#ef4444,#f87171)}
+
+.dash-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 24px}
+.chart-title{font-size:.85rem;font-weight:700;letter-spacing:2px;color:var(--text);margin-bottom:4px}
+.chart-sub{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:20px}
+.chart-wrap{position:relative}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center .dc-val{font-family:var(--mono);font-size:1.4rem;color:var(--text);line-height:1}
+.donut-center .dc-lbl{font-size:.65rem;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px}
+.dash-flow-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:14px}
+.legend-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:600;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dash-total-banner{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04));border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
+.dtb-left{}
+.dtb-label{font-size:.72rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.dtb-amount{font-family:var(--mono);font-size:2.8rem;color:var(--accent);line-height:1}
+.dtb-sub{font-size:.78rem;color:var(--muted);margin-top:6px}
+.dtb-right{display:flex;gap:24px}
+.dtb-stat{text-align:center}
+.dtb-stat-val{font-family:var(--mono);font-size:1.4rem;color:var(--text);line-height:1;margin-bottom:3px}
+.dtb-stat-lbl{font-size:.65rem;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.dtb-divider{width:1px;background:var(--border)}
+.dash-live-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:.68rem;font-weight:700;letter-spacing:2px;
+  padding:4px 12px;border-radius:20px;
+  background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25);
+  opacity:.5;transition:opacity .3s;
+}
+@keyframes livePulse{
+  0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}
+  50%{box-shadow:0 0 0 8px rgba(16,185,129,0)}
+  100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}
+}
+.dash-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rev-status-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.rev-status-pill{font-family:var(--mono);font-size:.65rem;padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.rsp-success{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.rsp-insufficient{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.rsp-unregistered{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid rgba(107,114,128,.2)}
+.rev-total-row{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-top:6px}
+.rev-total-row strong{color:var(--text)}
+
+.status-pill {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.status-success { background: #dcfce7; color: #166534; }
+.status-unregistered { background: #fef3c7; color: #92400e; }
+.status-insufficient { background: #fee2e2; color: #991b1b; }
+
+.card-breakdown {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 8px;
+}
+
 </style>
 </head>
 <body>
@@ -130,8 +215,134 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
   <!-- Tabs -->
   <div class="tabs">
+    <button class="tab" onclick="showTab('dashboard',this)">DASHBOARD</button>
     <button class="tab active" onclick="showTab('vehicles',this)">VEHICLES</button>
     <button class="tab" onclick="showTab('transactions',this)">TRANSACTIONS</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" style="display:none">
+
+    <!-- Dashboard header with LIVE badge -->
+    <div class="dash-header-row">
+      <div class="section-label" style="margin-bottom:0">Overview</div>
+      <span class="dash-live-badge" id="dash-live-badge">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:blink 1.5s infinite"></span>
+        LIVE · <span id="dash-last-updated">--:--:--</span>
+      </span>
+    </div>
+    <div style="height:16px"></div>
+
+    <!-- Total Revenue Banner -->
+    <div class="dash-total-banner">
+      <div class="dtb-left">
+        <div class="dtb-label">Total Revenue Generated</div>
+        <div class="dtb-amount" id="d-total-rev">₹—</div>
+        <div class="dtb-sub" id="d-rev-sub">Loading transaction data…</div>
+      </div>
+      <div class="dtb-right">
+        <div class="dtb-stat">
+          <div class="dtb-stat-val" id="d-success-count">—</div>
+          <div class="dtb-stat-lbl">Paid Txns</div>
+        </div>
+        <div class="dtb-divider"></div>
+        <div class="dtb-stat">
+          <div class="dtb-stat-val" id="d-insuf-count" style="color:var(--red)">—</div>
+          <div class="dtb-stat-lbl">Insufficient</div>
+        </div>
+        <div class="dtb-divider"></div>
+        <div class="dtb-stat">
+          <div class="dtb-stat-val" id="d-unreg-count" style="color:var(--muted)">—</div>
+          <div class="dtb-stat-lbl">Unregistered</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-Class Revenue Cards -->
+    <div class="section-label">Revenue by Vehicle Class</div>
+    <div class="dash-revenue-grid">
+      <div class="rev-card rc-car">
+        <div class="rev-icon">🚗</div>
+        <div class="rev-amount" id="dr-car">₹0</div>
+        <div class="rev-label">Cars</div>
+        <div class="rev-total-row">Total detected: <strong id="dct-car">0</strong></div>
+        <div class="rev-status-row">
+          <span class="rev-status-pill rsp-success">✓ <span id="ds-car">0</span> paid</span>
+          <span class="rev-status-pill rsp-insufficient">✗ <span id="di-car">0</span> low bal</span>
+          <span class="rev-status-pill rsp-unregistered">? <span id="du-car">0</span> unreg</span>
+        </div>
+        <div class="rev-bar-bg"><div class="rev-bar-fill" id="drb-car" style="width:0%"></div></div>
+      </div>
+      <div class="rev-card rc-motorcycle">
+        <div class="rev-icon">🏍️</div>
+        <div class="rev-amount" id="dr-motorcycle">₹0</div>
+        <div class="rev-label">Motorcycles</div>
+        <div class="rev-total-row">Total detected: <strong id="dct-motorcycle">0</strong></div>
+        <div class="rev-status-row">
+          <span class="rev-status-pill rsp-success">✓ <span id="ds-motorcycle">0</span> paid</span>
+          <span class="rev-status-pill rsp-insufficient">✗ <span id="di-motorcycle">0</span> low bal</span>
+          <span class="rev-status-pill rsp-unregistered">? <span id="du-motorcycle">0</span> unreg</span>
+        </div>
+        <div class="rev-bar-bg"><div class="rev-bar-fill" id="drb-motorcycle" style="width:0%"></div></div>
+      </div>
+      <div class="rev-card rc-bus">
+        <div class="rev-icon">🚌</div>
+        <div class="rev-amount" id="dr-bus">₹0</div>
+        <div class="rev-label">Buses</div>
+        <div class="rev-total-row">Total detected: <strong id="dct-bus">0</strong></div>
+        <div class="rev-status-row">
+          <span class="rev-status-pill rsp-success">✓ <span id="ds-bus">0</span> paid</span>
+          <span class="rev-status-pill rsp-insufficient">✗ <span id="di-bus">0</span> low bal</span>
+          <span class="rev-status-pill rsp-unregistered">? <span id="du-bus">0</span> unreg</span>
+        </div>
+        <div class="rev-bar-bg"><div class="rev-bar-fill" id="drb-bus" style="width:0%"></div></div>
+      </div>
+      <div class="rev-card rc-truck">
+        <div class="rev-icon">🚚</div>
+        <div class="rev-amount" id="dr-truck">₹0</div>
+        <div class="rev-label">Trucks</div>
+        <div class="rev-total-row">Total detected: <strong id="dct-truck">0</strong></div>
+        <div class="rev-status-row">
+          <span class="rev-status-pill rsp-success">✓ <span id="ds-truck">0</span> paid</span>
+          <span class="rev-status-pill rsp-insufficient">✗ <span id="di-truck">0</span> low bal</span>
+          <span class="rev-status-pill rsp-unregistered">? <span id="du-truck">0</span> unreg</span>
+        </div>
+        <div class="rev-bar-bg"><div class="rev-bar-fill" id="drb-truck" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Vehicle Distribution + Traffic Composition -->
+    <div class="dash-charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Vehicle Distribution</div>
+        <div class="chart-sub">Total vehicles processed per type</div>
+        <div class="chart-wrap"><canvas id="chartBar" height="200"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Traffic Composition</div>
+        <div class="chart-sub">Share of each vehicle type</div>
+        <div class="chart-wrap" style="position:relative">
+          <canvas id="chartDonut" height="200"></canvas>
+          <div class="donut-center">
+            <div class="dc-val" id="donut-total">0</div>
+            <div class="dc-lbl">Total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hourly Traffic Flow -->
+    <div class="dash-flow-card">
+      <div class="chart-title">Hourly Traffic Flow</div>
+      <div class="chart-sub">Vehicles processed per hour (from transaction history)</div>
+      <div class="legend-row">
+        <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Successful</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Insufficient</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Unregistered</span>
+      </div>
+      <canvas id="chartFlow" height="100"></canvas>
+    </div>
+
   </div>
 
   <!-- VEHICLES TAB -->
@@ -208,23 +419,347 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 <script>
 let allVehicles = [];
+let chartBar = null, chartDonut = null, chartFlow = null;
+let dashPollInterval = null;
+let lastTxnCount = 0;    // track change for "LIVE" pulse
+let chartsInitialised = false;
 
+// ── TAB ROUTING ──────────────────────────────────────────────────────────────
 function showTab(name, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-vehicles').style.display = name==='vehicles'?'block':'none';
-  document.getElementById('tab-transactions').style.display = name==='transactions'?'block':'none';
-  if (name==='transactions') loadTransactions();
+  document.getElementById('tab-dashboard').style.display    = name==='dashboard' ? 'block' : 'none';
+  document.getElementById('tab-vehicles').style.display     = name==='vehicles'  ? 'block' : 'none';
+  document.getElementById('tab-transactions').style.display = name==='transactions' ? 'block' : 'none';
+
+  if (name === 'transactions') loadTransactions();
+  if (name === 'dashboard') startDashboardPoll();
+  else stopDashboardPoll();
 }
 
 function toast(msg, err=false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'show' + (err?' error':'');
-  setTimeout(()=>t.className='', 2800);
+  t.className = 'show' + (err ? ' error' : '');
+  setTimeout(() => t.className = '', 2800);
 }
 
-// ── STATS ──
+// ── DASHBOARD POLLING ────────────────────────────────────────────────────────
+const TYPE_COLORS = {
+  car:        { border:'#3b82f6', bg:'rgba(59,130,246,0.25)'  },
+  motorcycle: { border:'#a855f7', bg:'rgba(168,85,247,0.25)'  },
+  bus:        { border:'#f59e0b', bg:'rgba(245,158,11,0.25)'  },
+  truck:      { border:'#ef4444', bg:'rgba(239,68,68,0.25)'   },
+};
+
+Chart.defaults.color = '#6b7280';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+Chart.defaults.font.size   = 11;
+
+function startDashboardPoll() {
+  refreshDashboard();                            // immediate first load
+  if (!dashPollInterval) {
+    dashPollInterval = setInterval(refreshDashboard, 3000);  // then every 3s
+  }
+}
+
+function stopDashboardPoll() {
+  if (dashPollInterval) { clearInterval(dashPollInterval); dashPollInterval = null; }
+}
+
+function refreshDashboard() {
+  fetch('/api/stats').then(r => r.json()).then(stats => {
+    updateRevenueCards(stats, null);
+    updateBarChart(stats);
+    updateDonutChart(stats);
+    updateFlowChart(stats.hourly || []);
+    pulseLiveIndicator(stats.total_vehicles || 0);
+  }).catch(() => {});
+}
+
+// Pulse the "LIVE" badge on every successful poll; flash brighter if new data
+function pulseLiveIndicator(count) {
+  const badge = document.getElementById('dash-live-badge');
+  const tsEl  = document.getElementById('dash-last-updated');
+  if (!badge) return;
+
+  // Update timestamp always
+  const now = new Date();
+  if (tsEl) tsEl.textContent =
+    now.toTimeString().slice(0,8);
+
+  badge.style.opacity = '1';
+
+  if (count !== lastTxnCount) {
+    lastTxnCount = count;
+    badge.style.animation = 'none';
+    void badge.offsetWidth;
+    badge.style.animation = 'livePulse .8s ease';
+  }
+}
+
+// ── REVENUE CARDS (text-only, no chart destroy) ───────────────────────────────
+function updateRevenueCards(stats, txns) {
+  const byType = stats.by_type || [];
+  const types  = ['car','motorcycle','bus','truck'];
+
+  const totalRev = stats.total_collected || 0;
+
+  // Banner
+  animateNumber('d-total-rev', totalRev, true);
+  document.getElementById('d-rev-sub').textContent =
+    `Across ${stats.total_vehicles || 0} total detection${stats.total_vehicles !== 1 ? 's' : ''}`;
+  document.getElementById('d-success-count').textContent = stats.success_count  || 0;
+  document.getElementById('d-insuf-count').textContent   = stats.insufficient   || 0;
+  document.getElementById('d-unreg-count').textContent   = stats.unregistered   || 0;
+
+  // Per-type cards — use total_count (ALL statuses) for bar width
+  const maxCount = Math.max(...byType.map(r => r.total_count || 0), 1);
+
+  types.forEach(t => {
+    const row = byType.find(r => r.vehicle_type === t) || {};
+    const rev        = row.revenue            || 0;
+    const totalCount = row.total_count        || 0;
+    const succCount  = row.success_count      || 0;
+    const insufCount = row.insufficient_count || 0;
+    const unregCount = row.unregistered_count || 0;
+
+    animateNumber('dr-' + t, rev, true);
+
+    // Total detected
+    const ctEl = document.getElementById('dct-' + t);
+    if (ctEl) ctEl.textContent = totalCount;
+
+    // Per-status pills
+    const dsEl = document.getElementById('ds-' + t);
+    const diEl = document.getElementById('di-' + t);
+    const duEl = document.getElementById('du-' + t);
+    if (dsEl) dsEl.textContent = succCount;
+    if (diEl) diEl.textContent = insufCount;
+    if (duEl) duEl.textContent = unregCount;
+
+    // Progress bar = share of ALL detections
+    document.getElementById('drb-' + t).style.width =
+      (totalCount / maxCount * 100).toFixed(1) + '%';
+  });
+}
+
+// Smooth number counter animation
+const _numTargets = {};
+function animateNumber(id, target, currency=false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const prev = _numTargets[id] ?? 0;
+  if (prev === target) return;         // no change, skip
+  _numTargets[id] = target;
+  const start = prev;
+  const duration = 600;
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min((now - startTime) / duration, 1);
+    const ease = p < .5 ? 2*p*p : -1+(4-2*p)*p;
+    const val = start + (target - start) * ease;
+    el.textContent = (currency ? '₹' : '') + Math.round(val).toLocaleString('en-IN');
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── BAR CHART: stacked by status, in-place update ────────────────────────────
+function updateBarChart(stats) {
+  const byType = stats.by_type || [];
+  const types  = ['car','motorcycle','bus','truck'];
+  const labels = ['Cars','Motorcycles','Buses','Trucks'];
+
+  const successData  = types.map(t => (byType.find(r=>r.vehicle_type===t)||{}).success_count      || 0);
+  const insufData    = types.map(t => (byType.find(r=>r.vehicle_type===t)||{}).insufficient_count || 0);
+  const unregData    = types.map(t => (byType.find(r=>r.vehicle_type===t)||{}).unregistered_count || 0);
+
+  if (!chartBar) {
+    chartBar = new Chart(document.getElementById('chartBar'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Paid',
+            data: successData,
+            backgroundColor: 'rgba(16,185,129,0.7)',
+            borderColor: '#10b981',
+            borderWidth: 1, borderRadius: 4, borderSkipped: false,
+          },
+          {
+            label: 'Low Balance',
+            data: insufData,
+            backgroundColor: 'rgba(239,68,68,0.7)',
+            borderColor: '#ef4444',
+            borderWidth: 1, borderRadius: 0, borderSkipped: false,
+          },
+          {
+            label: 'Unregistered',
+            data: unregData,
+            backgroundColor: 'rgba(107,114,128,0.55)',
+            borderColor: '#6b7280',
+            borderWidth: 1, borderRadius: 0, borderSkipped: false,
+          }
+        ]
+      },
+      options: {
+        animation: { duration: 600, easing: 'easeInOutQuart' },
+        responsive: true,
+        scales: {
+          x: {
+            stacked: true,
+            grid: { color:'rgba(255,255,255,.04)' },
+            ticks: { color:'#6b7280' }
+          },
+          y: {
+            stacked: true,
+            grid: { color:'rgba(255,255,255,.06)' },
+            ticks: { color:'#6b7280' },
+            beginAtZero: true
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: { color:'#9ca3af', padding:12, font:{size:10}, boxWidth:10 }
+          },
+          tooltip: {
+            backgroundColor:'#1f2937', borderColor:'#374151', borderWidth:1,
+            callbacks: {
+              footer: items => {
+                const total = items.reduce((s,i) => s + i.raw, 0);
+                return `Total: ${total}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    chartBar.data.datasets[0].data = successData;
+    chartBar.data.datasets[1].data = insufData;
+    chartBar.data.datasets[2].data = unregData;
+    chartBar.update('active');
+  }
+}
+
+// ── DONUT CHART: in-place data update (ALL detections) ───────────────────────
+function updateDonutChart(stats) {
+  const byType = stats.by_type || [];
+  const types  = ['car','motorcycle','bus','truck'];
+  const labels = ['Cars','Motorcycles','Buses','Trucks'];
+
+  // Use total_count (all statuses) for true traffic composition
+  const data = types.map(t => {
+    const row = byType.find(r => r.vehicle_type === t);
+    return row ? row.total_count : 0;
+  });
+  const total = data.reduce((a,b) => a+b, 0);
+  document.getElementById('donut-total').textContent = total;
+
+  if (!chartDonut) {
+    chartDonut = new Chart(document.getElementById('chartDonut'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: types.map(t => TYPE_COLORS[t].bg),
+          borderColor:     types.map(t => TYPE_COLORS[t].border),
+          borderWidth: 2,
+          hoverOffset: 8,
+        }]
+      },
+      options: {
+        animation: { duration: 600 },
+        responsive: true,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color:'#9ca3af', padding:14, font:{ size:11 } }
+          },
+          tooltip: {
+            backgroundColor:'#1f2937', borderColor:'#374151', borderWidth:1,
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.raw} (${total ? ((ctx.raw/total)*100).toFixed(1) : 0}%)`
+            }
+          }
+        }
+      }
+    });
+  } else {
+    chartDonut.data.datasets[0].data = data;
+    chartDonut.update('active');
+  }
+}
+
+// ── FLOW CHART: uses pre-aggregated hourly data from /api/stats ──────────────
+function updateFlowChart(hourly) {
+  const labels      = hourly.length ? hourly.map(r => r.hour)                       : ['08:00','09:00','10:00','11:00','12:00','13:00'];
+  const successData = hourly.length ? hourly.map(r => r.success_count      || 0)    : Array(6).fill(0);
+  const insufData   = hourly.length ? hourly.map(r => r.insufficient_count || 0)    : Array(6).fill(0);
+  const unregData   = hourly.length ? hourly.map(r => r.unregistered_count || 0)    : Array(6).fill(0);
+
+  if (!chartFlow) {
+    chartFlow = new Chart(document.getElementById('chartFlow'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Successful',
+            data: successData,
+            borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.15)',
+            fill:true, tension:.4, borderWidth:2,
+            pointBackgroundColor:'#10b981', pointRadius:4, pointHoverRadius:6,
+          },
+          {
+            label: 'Insufficient',
+            data: insufData,
+            borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)',
+            fill:true, tension:.4, borderWidth:2,
+            pointBackgroundColor:'#ef4444', pointRadius:4, pointHoverRadius:6,
+          },
+          {
+            label: 'Unregistered',
+            data: unregData,
+            borderColor:'#6b7280', backgroundColor:'rgba(107,114,128,0.08)',
+            fill:true, tension:.4, borderWidth:2,
+            pointBackgroundColor:'#6b7280', pointRadius:4, pointHoverRadius:6,
+          }
+        ]
+      },
+      options: {
+        animation: { duration: 600, easing: 'easeInOutQuart' },
+        responsive: true,
+        interaction: { mode:'index', intersect:false },
+        plugins: {
+          legend: { display:false },
+          tooltip: {
+            backgroundColor:'#1f2937', borderColor:'#374151', borderWidth:1,
+            callbacks: { footer: items => 'Total: ' + items.reduce((s,i)=>s+i.raw,0) }
+          }
+        },
+        scales: {
+          x: { grid:{ color:'rgba(255,255,255,.04)' }, ticks:{ color:'#6b7280' } },
+          y: { grid:{ color:'rgba(255,255,255,.06)' }, ticks:{ color:'#6b7280' }, beginAtZero:true }
+        }
+      }
+    });
+  } else {
+    chartFlow.data.labels           = labels;
+    chartFlow.data.datasets[0].data = successData;
+    chartFlow.data.datasets[1].data = insufData;
+    chartFlow.data.datasets[2].data = unregData;
+    chartFlow.update('active');
+  }
+}
+
+// ── TOP-BAR STATS ─────────────────────────────────────────────────────────────
 function loadStats() {
   fetch('/api/stats').then(r=>r.json()).then(d=>{
     document.getElementById('a-collected').textContent = '₹'+(d.total_collected||0).toFixed(0);
@@ -236,20 +771,22 @@ function loadStats() {
   });
 }
 
-// ── VEHICLES ──
+// ── VEHICLES ──────────────────────────────────────────────────────────────────
 function loadVehicles() {
   fetch('/api/vehicles').then(r=>r.json()).then(data=>{
     allVehicles = data;
     const tbody = document.getElementById('vehicles-body');
-    if (!data.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No vehicles registered</td></tr>'; return; }
+    if (!data.length) {
+      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No vehicles registered</td></tr>';
+      return;
+    }
     tbody.innerHTML = data.map(v=>{
       const balClass = v.balance>=200?'balance-ok':v.balance>=50?'balance-low':'balance-critical';
-      const date = v.registered_at ? v.registered_at.split('T')[0] : '—';
-      const vtClass = `vt-${v.vehicle_type}`;
+      const date     = v.registered_at ? v.registered_at.split('T')[0] : '—';
       return `<tr>
         <td><span class="plate-cell">${v.plate}</span></td>
         <td style="font-weight:600">${v.owner}</td>
-        <td><span class="vtype-badge ${vtClass}">${v.vehicle_type}</span></td>
+        <td><span class="vtype-badge vt-${v.vehicle_type}">${v.vehicle_type}</span></td>
         <td><span class="balance-cell ${balClass}">₹${v.balance.toFixed(2)}</span></td>
         <td style="color:var(--muted);font-size:.82rem">${date}</td>
         <td>
@@ -283,7 +820,7 @@ function deleteVehicle(plate) {
     .then(()=>{ toast('Vehicle removed'); loadVehicles(); loadStats(); });
 }
 
-// ── TOP UP ──
+// ── TOP UP ─────────────────────────────────────────────────────────────────────
 function openTopup(plate, owner) {
   document.getElementById('topup-plate').value = plate;
   document.getElementById('modal-plate-label').textContent = `Vehicle: ${plate} — ${owner}`;
@@ -298,19 +835,21 @@ function confirmTopup() {
     .then(r=>r.json()).then(()=>{ toast(`₹${amount} added to ${plate} ✓`); closeModal(); loadVehicles(); });
 }
 
-// ── TRANSACTIONS ──
+// ── TRANSACTIONS ───────────────────────────────────────────────────────────────
 function loadTransactions() {
   fetch('/api/transactions').then(r=>r.json()).then(data=>{
     const tbody = document.getElementById('txn-body');
-    if (!data.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No transactions yet</td></tr>'; return; }
+    if (!data.length) {
+      tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No transactions yet</td></tr>';
+      return;
+    }
     tbody.innerHTML = data.map(t=>{
       const stClass = t.status==='success'?'st-success':t.status==='insufficient'?'st-insufficient':'st-unregistered';
       const stLabel = t.status==='success'?'PAID':t.status==='insufficient'?'LOW BAL':'UNKNOWN';
-      const vtClass = `vt-${t.vehicle_type}`;
       return `<tr>
         <td style="font-family:var(--mono);font-size:.78rem;color:var(--muted)">${t.timestamp}</td>
         <td><span class="plate-cell">${t.plate}</span></td>
-        <td><span class="vtype-badge ${vtClass}">${t.vehicle_type}</span></td>
+        <td><span class="vtype-badge vt-${t.vehicle_type}">${t.vehicle_type}</span></td>
         <td style="font-family:var(--mono);color:var(--accent)">₹${t.toll_amount}</td>
         <td style="font-family:var(--mono)">₹${t.balance_before.toFixed(0)}</td>
         <td style="font-family:var(--mono)">${t.status==='success'?'₹'+t.balance_after.toFixed(0):'—'}</td>
@@ -320,17 +859,26 @@ function loadTransactions() {
   });
 }
 
-// init
+// ── INIT ───────────────────────────────────────────────────────────────────────
 loadStats();
 loadVehicles();
+// Default: open Dashboard tab and start polling
+document.querySelector('.tab[onclick*="dashboard"]').click();
 
-// Handle 401 from any fetch (session expired)
+// Top-bar stats also refresh every 5s independently
+setInterval(loadStats, 5000);
+
+// Stop polling when page is hidden (battery / tab friendly)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopDashboardPoll();
+  else if (document.getElementById('tab-dashboard').style.display !== 'none') startDashboardPoll();
+});
+
+// Handle 401
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
   return _origFetch(...args).then(res => {
-    if (res.status === 401) {
-      window.location.href = '/login';
-    }
+    if (res.status === 401) window.location.href = '/login';
     return res;
   });
 };
