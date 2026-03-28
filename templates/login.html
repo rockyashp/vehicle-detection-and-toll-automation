@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TollAI — Admin Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060810;--surface:#0d1117;--card:#111827;--border:#1f2937;
+  --accent:#f59e0b;--red:#ef4444;--green:#10b981;
+  --text:#f9fafb;--muted:#6b7280;
+  --font:'Rajdhani',sans-serif;--mono:'Share Tech Mono',monospace;
+}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+
+/* animated grid background */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(245,158,11,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(245,158,11,.04) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:gridScroll 20s linear infinite;
+  pointer-events:none;
+}
+@keyframes gridScroll{from{background-position:0 0}to{background-position:48px 48px}}
+
+/* scanlines */
+body::after{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);
+  pointer-events:none;z-index:999;
+}
+
+/* glow blobs */
+.blob{position:fixed;border-radius:50%;filter:blur(80px);opacity:.12;pointer-events:none}
+.blob1{width:400px;height:400px;background:var(--accent);top:-100px;left:-100px;animation:drift 8s ease-in-out infinite alternate}
+.blob2{width:300px;height:300px;background:#3b82f6;bottom:-80px;right:-80px;animation:drift 10s ease-in-out infinite alternate-reverse}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(40px,30px)}}
+
+/* card */
+.login-card{
+  position:relative;z-index:10;
+  background:rgba(17,24,39,.85);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:48px 44px;
+  width:100%;max-width:420px;
+  backdrop-filter:blur(20px);
+  box-shadow:0 0 60px rgba(0,0,0,.5), 0 0 0 1px rgba(245,158,11,.08);
+  animation:cardIn .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(32px) scale(.97)}to{opacity:1;transform:none}}
+
+/* logo */
+.card-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:36px}
+.logo-mark{
+  width:48px;height:48px;background:var(--accent);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;color:#000;
+  box-shadow:0 0 24px rgba(245,158,11,.4);
+}
+.logo-name{font-size:1.8rem;font-weight:700;letter-spacing:3px}
+.logo-name span{color:var(--accent)}
+
+/* subtitle */
+.card-sub{
+  text-align:center;margin-bottom:32px;
+}
+.card-sub h2{font-size:1rem;font-weight:700;letter-spacing:2px;margin-bottom:4px}
+.card-sub p{font-size:.82rem;color:var(--muted);font-family:var(--mono)}
+
+/* divider */
+.divider{height:1px;background:var(--border);margin-bottom:28px;position:relative}
+.divider::before{
+  content:'RESTRICTED ACCESS';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:var(--card);padding:0 12px;font-family:var(--mono);font-size:.62rem;
+  color:var(--muted);letter-spacing:2px;white-space:nowrap;
+}
+
+/* form */
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+
+.input-wrap{position:relative}
+.input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:.5;pointer-events:none}
+.form-input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:.92rem;
+  padding:12px 14px 12px 42px;border-radius:8px;outline:none;
+  transition:border-color .25s, box-shadow .25s;letter-spacing:1px;
+}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.12)}
+.form-input::placeholder{color:var(--muted);letter-spacing:0}
+
+/* password toggle */
+.toggle-pw{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;
+  padding:4px;transition:color .2s;
+}
+.toggle-pw:hover{color:var(--accent)}
+
+/* error msg */
+#error-msg{
+  display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  border-radius:8px;padding:10px 14px;margin-bottom:18px;
+  font-size:.82rem;color:var(--red);font-family:var(--mono);
+  animation:shake .4s ease;
+}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* login btn */
+.login-btn{
+  width:100%;padding:14px;background:var(--accent);color:#000;
+  font-family:var(--font);font-weight:700;font-size:1rem;letter-spacing:2px;
+  border:none;border-radius:8px;cursor:pointer;
+  transition:opacity .2s, transform .2s, box-shadow .2s;
+  position:relative;overflow:hidden;margin-top:4px;
+}
+.login-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 24px rgba(245,158,11,.3)}
+.login-btn:active{transform:none}
+.login-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* spinner inside button */
+.btn-text{display:flex;align-items:center;justify-content:center;gap:10px}
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* back link */
+.back-link{display:block;text-align:center;margin-top:20px;font-size:.82rem;color:var(--muted);text-decoration:none;transition:color .2s;font-family:var(--mono)}
+.back-link:hover{color:var(--accent)}
+
+/* credentials hint */
+.hint{
+  margin-top:24px;padding:12px 16px;
+  background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);
+  border-radius:8px;font-family:var(--mono);font-size:.72rem;color:var(--muted);
+  text-align:center;line-height:1.8;
+}
+.hint strong{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<div class="login-card">
+  <div class="card-logo">
+    <div class="logo-mark">🛣</div>
+    <div class="logo-name">TOLL<span>AI</span></div>
+  </div>
+
+  <div class="card-sub">
+    <h2>ADMIN LOGIN</h2>
+    <p>Authorized personnel only</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div id="error-msg">⚠ Invalid credentials. Please try again.</div>
+
+  <div class="form-group">
+    <label class="form-label">Admin ID</label>
+    <div class="input-wrap">
+      <span class="input-icon">👤</span>
+      <input class="form-input" type="text" id="username" placeholder="Enter admin ID" autocomplete="username"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Password</label>
+    <div class="input-wrap">
+      <span class="input-icon">🔒</span>
+      <input class="form-input" type="password" id="password" placeholder="Enter password" autocomplete="current-password"/>
+      <button class="toggle-pw" type="button" onclick="togglePassword()" id="toggleBtn">👁</button>
+    </div>
+  </div>
+
+  <button class="login-btn" id="loginBtn" onclick="doLogin()">
+    <span class="btn-text">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnLabel">LOGIN TO ADMIN PANEL</span>
+    </span>
+  </button>
+
+  <a href="/" class="back-link">← Back to Live Detection</a>
+
+  <div class="hint">
+    Default credentials:<br/>
+    ID: <strong>admin</strong> &nbsp;·&nbsp; Password: <strong>toll@2024</strong><br/>
+    <span style="font-size:.65rem;opacity:.6">(Change these in app.py before deployment)</span>
+  </div>
+</div>
+
+<script>
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  function togglePassword() {
+    const pw = document.getElementById('password');
+    const btn = document.getElementById('toggleBtn');
+    if (pw.type === 'password') { pw.type = 'text'; btn.textContent = '🙈'; }
+    else { pw.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  function setLoading(on) {
+    document.getElementById('loginBtn').disabled = on;
+    document.getElementById('spinner').style.display = on ? 'block' : 'none';
+    document.getElementById('btnLabel').textContent = on ? 'VERIFYING...' : 'LOGIN TO ADMIN PANEL';
+  }
+
+  function showError() {
+    const el = document.getElementById('error-msg');
+    el.style.display = 'block';
+    // re-trigger shake animation
+    el.style.animation = 'none';
+    el.offsetHeight; // reflow
+    el.style.animation = 'shake .4s ease';
+    document.getElementById('password').value = '';
+    document.getElementById('password').focus();
+  }
+
+  function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username || !password) {
+      showError();
+      document.getElementById('error-msg').textContent = '⚠ Please fill in both fields.';
+      return;
+    }
+
+    setLoading(true);
+    document.getElementById('error-msg').style.display = 'none';
+
+    fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('btnLabel').textContent = '✓ ACCESS GRANTED';
+        document.getElementById('loginBtn').style.background = 'var(--green)';
+        setTimeout(() => window.location.href = '/admin', 600);
+      } else {
+        setLoading(false);
+        showError();
+        document.getElementById('error-msg').textContent = '⚠ Invalid credentials. Please try again.';
+      }
+    })
+    .catch(() => {
+      setLoading(false);
+      showError();
+      document.getElementById('error-msg').textContent = '⚠ Could not reach server.';
+    });
+  }
+</script>
+</body>
+</html>

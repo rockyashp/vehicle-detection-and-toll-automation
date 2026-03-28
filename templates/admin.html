@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TollAI — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060810;--surface:#0d1117;--card:#111827;--border:#1f2937;
+  --accent:#f59e0b;--green:#10b981;--red:#ef4444;--blue:#3b82f6;
+  --text:#f9fafb;--muted:#6b7280;--font:'Rajdhani',sans-serif;--mono:'Share Tech Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:999}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-mark{width:40px;height:40px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#000}
+.logo-name{font-size:1.5rem;font-weight:700;letter-spacing:2px}
+.logo-name span{color:var(--accent)}
+.nav-links{display:flex;gap:8px}
+.nav-btn{font-family:var(--font);font-size:.9rem;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;letter-spacing:1px;text-decoration:none;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.2s}
+.nav-btn.active,.nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+main{max-width:1300px;margin:0 auto;padding:32px 24px}
+
+/* stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:36px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden}
+.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-box.gold::before{background:var(--accent)}
+.stat-box.green::before{background:var(--green)}
+.stat-box.red::before{background:var(--red)}
+.stat-box.blue::before{background:var(--blue)}
+.stat-val{font-family:var(--mono);font-size:1.7rem;line-height:1;margin-bottom:4px}
+.stat-val.gold{color:var(--accent)}.stat-val.green{color:var(--green)}.stat-val.red{color:var(--red)}.stat-val.blue{color:var(--blue)}
+.stat-lbl{font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px;width:fit-content}
+.tab{font-family:var(--font);font-size:.9rem;font-weight:700;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;letter-spacing:1px;background:transparent;color:var(--muted);transition:.2s}
+.tab.active{background:var(--accent);color:#000}
+
+/* section label */
+.section-label{font-family:var(--mono);font-size:.7rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
+
+/* table */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface)}
+th{padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--border)}
+td{padding:13px 16px;font-size:.9rem;border-bottom:1px solid rgba(31,41,55,.5)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.plate-cell{font-family:var(--mono);font-size:.9rem;letter-spacing:2px;background:rgba(255,255,255,.05);padding:3px 10px;border-radius:4px;display:inline-block}
+.balance-cell{font-family:var(--mono)}
+.balance-ok{color:var(--green)}
+.balance-low{color:var(--accent)}
+.balance-critical{color:var(--red)}
+.vtype-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+.vt-car{background:rgba(59,130,246,.15);color:var(--blue)}
+.vt-truck{background:rgba(245,158,11,.15);color:var(--accent)}
+.vt-bus{background:rgba(16,185,129,.15);color:var(--green)}
+.vt-motorcycle{background:rgba(239,68,68,.15);color:var(--red)}
+.status-badge{font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:1px}
+.st-success{background:rgba(16,185,129,.15);color:var(--green)}
+.st-insufficient{background:rgba(239,68,68,.15);color:var(--red)}
+.st-unregistered{background:rgba(107,114,128,.15);color:var(--muted)}
+
+/* action buttons */
+.act-btn{font-family:var(--font);font-size:.78rem;font-weight:700;padding:5px 12px;border-radius:5px;cursor:pointer;border:1px solid;letter-spacing:.5px;transition:.2s}
+.btn-topup{border-color:var(--green);color:var(--green);background:transparent}
+.btn-topup:hover{background:var(--green);color:#000}
+.btn-del{border-color:var(--red);color:var(--red);background:transparent;margin-left:6px}
+.btn-del:hover{background:var(--red);color:#fff}
+
+/* add vehicle form */
+.add-form{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:16px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.form-input,.form-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.9rem;padding:9px 12px;border-radius:7px;outline:none;transition:.2s}
+.form-input:focus,.form-select:focus{border-color:var(--accent)}
+.form-select option{background:var(--surface)}
+.submit-btn{background:var(--accent);color:#000;font-family:var(--font);font-weight:700;font-size:.9rem;letter-spacing:2px;padding:10px 28px;border:none;border-radius:7px;cursor:pointer;transition:.2s}
+.submit-btn:hover{opacity:.85}
+
+/* modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;position:relative}
+.modal h3{font-size:1.1rem;font-weight:700;letter-spacing:1px;margin-bottom:6px}
+.modal p{font-size:.85rem;color:var(--muted);margin-bottom:20px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer}
+
+/* toast */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;font-family:var(--font);font-weight:700;padding:12px 24px;border-radius:8px;font-size:.9rem;letter-spacing:1px;z-index:300;transform:translateY(80px);opacity:0;transition:.3s}
+#toast.show{transform:none;opacity:1}
+#toast.error{background:var(--red);color:#fff}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🛣</div>
+    <div class="logo-name">TOLL<span>AI</span> &nbsp;<span style="font-size:.8rem;color:var(--muted);font-weight:400">ADMIN</span></div>
+  </div>
+  <nav class="nav-links">
+    <a href="/" class="nav-btn">LIVE DETECTION</a>
+    <a href="/admin" class="nav-btn active">ADMIN PANEL</a>
+    <a href="/logout" class="nav-btn" style="border-color:#ef4444;color:#ef4444" onclick="return confirm('Log out of admin panel?')">LOGOUT</a>
+  </nav>
+  <div style="font-family:var(--mono);font-size:.75rem;color:var(--muted)">RESTRICTED ACCESS</div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box gold"><div class="stat-val gold" id="a-collected">—</div><div class="stat-lbl">Total Collected</div></div>
+    <div class="stat-box green"><div class="stat-val green" id="a-vehicles">—</div><div class="stat-lbl">Total Transactions</div></div>
+    <div class="stat-box red"><div class="stat-val red" id="a-failed">—</div><div class="stat-lbl">Insufficient</div></div>
+    <div class="stat-box blue"><div class="stat-val blue" id="a-registered">—</div><div class="stat-lbl">Registered Vehicles</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('vehicles',this)">VEHICLES</button>
+    <button class="tab" onclick="showTab('transactions',this)">TRANSACTIONS</button>
+  </div>
+
+  <!-- VEHICLES TAB -->
+  <div id="tab-vehicles">
+    <div class="section-label">Add New Vehicle</div>
+    <div class="add-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Number Plate</label>
+          <input class="form-input" id="f-plate" placeholder="MH12AB1234" style="text-transform:uppercase"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Owner Name</label>
+          <input class="form-input" id="f-owner" placeholder="Full Name"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vehicle Type</label>
+          <select class="form-select" id="f-type">
+            <option value="car">Car</option>
+            <option value="motorcycle">Motorcycle</option>
+            <option value="bus">Bus</option>
+            <option value="truck">Truck</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial Balance (₹)</label>
+          <input class="form-input" id="f-balance" type="number" placeholder="500" value="500"/>
+        </div>
+      </div>
+      <button class="submit-btn" onclick="addVehicle()">+ ADD VEHICLE</button>
+    </div>
+
+    <div class="section-label">Registered Vehicles</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Plate</th><th>Owner</th><th>Type</th><th>Balance</th><th>Registered</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="vehicles-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS TAB -->
+  <div id="tab-transactions" style="display:none">
+    <div class="section-label">Transaction History</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Plate</th><th>Type</th><th>Toll</th><th>Before</th><th>After</th><th>Status</th>
+        </tr></thead>
+        <tbody id="txn-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Top-up modal -->
+<div class="modal-bg" id="topupModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>TOP UP BALANCE</h3>
+    <p id="modal-plate-label">Vehicle: —</p>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Amount to Add (₹)</label>
+      <input class="form-input" id="topup-amount" type="number" placeholder="500" value="500"/>
+    </div>
+    <button class="submit-btn" onclick="confirmTopup()">CONFIRM TOP UP</button>
+    <input type="hidden" id="topup-plate"/>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let allVehicles = [];
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-vehicles').style.display = name==='vehicles'?'block':'none';
+  document.getElementById('tab-transactions').style.display = name==='transactions'?'block':'none';
+  if (name==='transactions') loadTransactions();
+}
+
+function toast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (err?' error':'');
+  setTimeout(()=>t.className='', 2800);
+}
+
+// ── STATS ──
+function loadStats() {
+  fetch('/api/stats').then(r=>r.json()).then(d=>{
+    document.getElementById('a-collected').textContent = '₹'+(d.total_collected||0).toFixed(0);
+    document.getElementById('a-vehicles').textContent  = d.total_vehicles||0;
+    document.getElementById('a-failed').textContent    = d.insufficient||0;
+  });
+  fetch('/api/vehicles').then(r=>r.json()).then(d=>{
+    document.getElementById('a-registered').textContent = d.length;
+  });
+}
+
+// ── VEHICLES ──
+function loadVehicles() {
+  fetch('/api/vehicles').then(r=>r.json()).then(data=>{
+    allVehicles = data;
+    const tbody = document.getElementById('vehicles-body');
+    if (!data.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No vehicles registered</td></tr>'; return; }
+    tbody.innerHTML = data.map(v=>{
+      const balClass = v.balance>=200?'balance-ok':v.balance>=50?'balance-low':'balance-critical';
+      const date = v.registered_at ? v.registered_at.split('T')[0] : '—';
+      const vtClass = `vt-${v.vehicle_type}`;
+      return `<tr>
+        <td><span class="plate-cell">${v.plate}</span></td>
+        <td style="font-weight:600">${v.owner}</td>
+        <td><span class="vtype-badge ${vtClass}">${v.vehicle_type}</span></td>
+        <td><span class="balance-cell ${balClass}">₹${v.balance.toFixed(2)}</span></td>
+        <td style="color:var(--muted);font-size:.82rem">${date}</td>
+        <td>
+          <button class="act-btn btn-topup" onclick="openTopup('${v.plate}','${v.owner}')">TOP UP</button>
+          <button class="act-btn btn-del" onclick="deleteVehicle('${v.plate}')">DELETE</button>
+        </td>
+      </tr>`;
+    }).join('');
+  });
+}
+
+function addVehicle() {
+  const plate   = document.getElementById('f-plate').value.trim().toUpperCase();
+  const owner   = document.getElementById('f-owner').value.trim();
+  const vtype   = document.getElementById('f-type').value;
+  const balance = parseFloat(document.getElementById('f-balance').value)||500;
+  if (!plate||!owner) { toast('Fill in all fields', true); return; }
+  fetch('/api/vehicles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate,owner,vehicle_type:vtype,balance})})
+    .then(r=>r.json()).then(d=>{
+      if(d.error){ toast(d.error,true); return; }
+      toast('Vehicle added ✓');
+      document.getElementById('f-plate').value='';
+      document.getElementById('f-owner').value='';
+      loadVehicles(); loadStats();
+    });
+}
+
+function deleteVehicle(plate) {
+  if (!confirm(`Delete vehicle ${plate}?`)) return;
+  fetch(`/api/vehicles/${plate}`,{method:'DELETE'})
+    .then(()=>{ toast('Vehicle removed'); loadVehicles(); loadStats(); });
+}
+
+// ── TOP UP ──
+function openTopup(plate, owner) {
+  document.getElementById('topup-plate').value = plate;
+  document.getElementById('modal-plate-label').textContent = `Vehicle: ${plate} — ${owner}`;
+  document.getElementById('topupModal').classList.add('open');
+}
+function closeModal() { document.getElementById('topupModal').classList.remove('open'); }
+function confirmTopup() {
+  const plate  = document.getElementById('topup-plate').value;
+  const amount = parseFloat(document.getElementById('topup-amount').value)||0;
+  if (amount<=0) { toast('Enter a valid amount', true); return; }
+  fetch(`/api/vehicles/${plate}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({topup:amount})})
+    .then(r=>r.json()).then(()=>{ toast(`₹${amount} added to ${plate} ✓`); closeModal(); loadVehicles(); });
+}
+
+// ── TRANSACTIONS ──
+function loadTransactions() {
+  fetch('/api/transactions').then(r=>r.json()).then(data=>{
+    const tbody = document.getElementById('txn-body');
+    if (!data.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No transactions yet</td></tr>'; return; }
+    tbody.innerHTML = data.map(t=>{
+      const stClass = t.status==='success'?'st-success':t.status==='insufficient'?'st-insufficient':'st-unregistered';
+      const stLabel = t.status==='success'?'PAID':t.status==='insufficient'?'LOW BAL':'UNKNOWN';
+      const vtClass = `vt-${t.vehicle_type}`;
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:.78rem;color:var(--muted)">${t.timestamp}</td>
+        <td><span class="plate-cell">${t.plate}</span></td>
+        <td><span class="vtype-badge ${vtClass}">${t.vehicle_type}</span></td>
+        <td style="font-family:var(--mono);color:var(--accent)">₹${t.toll_amount}</td>
+        <td style="font-family:var(--mono)">₹${t.balance_before.toFixed(0)}</td>
+        <td style="font-family:var(--mono)">${t.status==='success'?'₹'+t.balance_after.toFixed(0):'—'}</td>
+        <td><span class="status-badge ${stClass}">${stLabel}</span></td>
+      </tr>`;
+    }).join('');
+  });
+}
+
+// init
+loadStats();
+loadVehicles();
+
+// Handle 401 from any fetch (session expired)
+const _origFetch = window.fetch;
+window.fetch = function(...args) {
+  return _origFetch(...args).then(res => {
+    if (res.status === 401) {
+      window.location.href = '/login';
+    }
+    return res;
+  });
+};
+</script>
+</body>
+</html>
