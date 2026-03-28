@@ -1,5 +1,6 @@
 # TollAI — Smart Automatic Toll Collection System
 **Student:** Yash Patil | Roll No: 24101A0065 | Subject: MVRP
+**Student:** Gaurav Ghude | Roll No: 24101A0061 | Subject: MVRP
 
 ---
 
